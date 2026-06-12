@@ -1,0 +1,114 @@
+// Main app composition
+
+function AppContent({ tab, setTab, recipe, view, setView, openMeal, closeMeal, standalone, day, shopping, setShopping }) {
+  const meal = recipe ? MEALS[recipe] : null;
+
+  let content;
+  if (meal) {
+    content = <RecipeScreen meal={meal} onBack={closeMeal} />;
+  } else if (tab === 'home') {
+    content = <HomeScreen
+      onOpenMeal={openMeal}
+      view={view} setView={setView}
+      eaten={day.eaten} toggleMeal={day.toggleMeal}
+      taken={day.taken} toggleSup={day.toggleSup}
+      onOpenShopping={() => setShopping(true)}
+    />;
+  } else if (tab === 'foods') {
+    content = <FoodsScreen />;
+  } else if (tab === 'pills') {
+    content = <PillsScreen taken={day.taken} toggleSup={day.toggleSup} />;
+  } else if (tab === 'feel') {
+    content = <FeelScreen />;
+  }
+
+  const label = meal ? `Recept · ${meal.title}` : tab === 'home' ? '01 Dnes' : tab === 'foods' ? '02 Potraviny' : tab === 'pills' ? '03 Doplnky' : '04 Pocit';
+
+  return (
+    <>
+      <div data-screen-label={label} style={{
+        width: '100%', height: '100%',
+        overflow: 'auto', overflowX: 'hidden',
+        paddingTop: standalone ? 0 : 4,
+        paddingBottom: 110,
+        background: PALETTE.cream,
+      }}>
+        {content}
+      </div>
+      {!meal && <BottomNav tab={tab} setTab={setTab} />}
+    </>
+  );
+}
+
+function App() {
+  const [tweaks, setTweak] = useTweaks({ view: 'den' });
+
+  const [tab, setTab] = React.useState('home');
+  const [recipe, setRecipe] = React.useState(null);
+  const [installOpen, setInstallOpen] = React.useState(false);
+  const [shopping, setShopping] = React.useState(false);
+
+  const day = useDayState();
+
+  const openMeal = (id) => setRecipe(id);
+  const closeMeal = () => setRecipe(null);
+
+  const view = tweaks.view;
+  const setView = v => setTweak('view', v);
+
+  const standalone = typeof window !== 'undefined' && (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true
+  );
+
+  const inner = (
+    <AppContent
+      tab={tab} setTab={setTab}
+      recipe={recipe} view={view} setView={setView}
+      openMeal={openMeal} closeMeal={closeMeal}
+      standalone={standalone}
+      day={day}
+      shopping={shopping} setShopping={setShopping}
+    />
+  );
+
+  return (
+    <>
+      {standalone ? (
+        <div style={{
+          position: 'relative',
+          width: '100%',
+          minHeight: '100dvh',
+          background: PALETTE.cream,
+        }}>
+          {inner}
+        </div>
+      ) : (
+        <IOSDevice width={402} height={874} title="Histamín">
+          {inner}
+        </IOSDevice>
+      )}
+
+      {!standalone && <InstallButton onOpen={() => setInstallOpen(true)} />}
+      {installOpen && <InstallSheet onClose={() => setInstallOpen(false)} />}
+      {shopping && <ShoppingSheet onClose={() => setShopping(false)} />}
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Náhľad">
+          <TweakRadio
+            label="Zobrazenie plánu"
+            value={view}
+            options={[
+              { value: 'den', label: 'Deň' },
+              { value: 'týždeň', label: 'Týždeň' },
+            ]}
+            onChange={setView}
+          />
+        </TweakSection>
+      </TweaksPanel>
+    </>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App/>);
